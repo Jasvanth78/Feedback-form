@@ -5,12 +5,11 @@ const feedbackRoutes = require('./Contrroller/feedbackcontroller');
 const cors = require('cors');
 const passwordResetRouter = require('./Routes/PasswordReset');
 
-
-
-
 dotenv.config();
 const app = express();
-app.use(cors());
+
+
+app.use(cors({origin: '*'}));
 app.use(express.json());
 app.use('/api', userRoutes);
 app.use('/api', passwordResetRouter);
