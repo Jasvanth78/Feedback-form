@@ -5,19 +5,20 @@ const { authenticate, authorizeRole } = require('../middleware/auth')
 const router = express.Router()
 const prisma = new PrismaClient()
 
-// ==================== ADMIN ROUTES ====================
 
-// POST /api/feedback/templates - Create feedback template (ADMIN only)
 router.post('/templates', authenticate, authorizeRole('ADMIN'), async (req, res) => {
-  const { title, question } = req.body
+  const { title, question, questions } = req.body
 
-  if (!title || !question) {
-    return res.status(400).json({ error: 'Title and question are required' })
+ 
+  const finalQuestion = question || (Array.isArray(questions) ? questions.filter(q => q && q.trim() !== '').join('\n\n') : null)
+
+  if (!title || !finalQuestion) {
+    return res.status(400).json({ error: 'Title and question(s) are required' })
   }
 
   try {
     const template = await prisma.feedbackTemplate.create({
-      data: { title, question, isActive: true }
+      data: { title, question: finalQuestion, isActive: true }
     })
     return res.status(201).json({ message: 'Feedback template created', template })
   } catch (err) {
@@ -26,7 +27,7 @@ router.post('/templates', authenticate, authorizeRole('ADMIN'), async (req, res)
   }
 })
 
-// GET /api/feedback/templates - List all templates (ADMIN only)
+
 router.get('/templates', authenticate, authorizeRole('ADMIN'), async (req, res) => {
   try {
     const templates = await prisma.feedbackTemplate.findMany({
@@ -44,7 +45,6 @@ router.get('/templates', authenticate, authorizeRole('ADMIN'), async (req, res) 
   }
 })
 
-// DELETE /api/feedback/templates/:id - Delete template (ADMIN only)
 router.delete('/templates/:id', authenticate, authorizeRole('ADMIN'), async (req, res) => {
   const { id } = req.params
   try {
@@ -56,7 +56,7 @@ router.delete('/templates/:id', authenticate, authorizeRole('ADMIN'), async (req
   }
 })
 
-// GET /api/feedback/responses - View all user responses (ADMIN only)
+
 router.get('/responses', authenticate, authorizeRole('ADMIN'), async (req, res) => {
   try {
     const responses = await prisma.feedbackResponse.findMany({
@@ -77,9 +77,7 @@ router.get('/responses', authenticate, authorizeRole('ADMIN'), async (req, res) 
   }
 })
 
-// ==================== USER ROUTES ====================
 
-// GET /api/feedback/active - Get active feedback templates (all authenticated users)
 router.get('/active', authenticate, async (req, res) => {
   try {
     const templates = await prisma.feedbackTemplate.findMany({
@@ -99,17 +97,20 @@ router.get('/active', authenticate, async (req, res) => {
   }
 })
 
-// POST /api/feedback/submit - Submit response to a template (authenticated users)
+
 router.post('/submit', authenticate, async (req, res) => {
-  const { templateId, answer, rating } = req.body
+  const { templateId, answer, answers, rating } = req.body
   const userId = req.user?.id
 
-  if (!templateId || !answer || !userId) {
-    return res.status(400).json({ error: 'Template ID, answer, and authentication required' })
+ 
+  const finalAnswer = answer || (Array.isArray(answers) ? answers.filter(a => a != null).join('\n\n') : null)
+
+  if (!templateId || !finalAnswer || !userId) {
+    return res.status(400).json({ error: 'Template ID, answer(s), and authentication required' })
   }
 
   try {
-    // Verify template exists and is active
+    
     const template = await prisma.feedbackTemplate.findUnique({
       where: { id: templateId }
     })
@@ -122,12 +123,11 @@ router.post('/submit', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'This feedback is no longer accepting responses' })
     }
 
-    // Create the response
     const response = await prisma.feedbackResponse.create({
       data: {
         templateId,
         userId,
-        answer,
+        answer: finalAnswer,
         rating: rating ? parseInt(rating, 10) : 5
       },
       include: {
@@ -144,7 +144,7 @@ router.post('/submit', authenticate, async (req, res) => {
   }
 })
 
-// GET /api/feedback/my-responses - Get current user's responses
+
 router.get('/my-responses', authenticate, async (req, res) => {
   const userId = req.user?.id
 
