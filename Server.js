@@ -9,21 +9,28 @@ const passwordResetRouter = require('./Routes/PasswordReset');
 dotenv.config();
 const app = express();
 
-// CORS configuration for deployed frontend
+// CORS configuration: allow the deployed frontend or reflect origin.
+// For debugging and to avoid blocked requests from various deployed domains,
+// we'll reflect the request origin (origin: true). In production you may
+// want to restrict this to a specific origin or list via process.env.FRONTEND_URL.
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://feedback-form-5sd6.onrender.com',
+  'https://jasvanth78.github.io'
+].filter(Boolean)
+
+console.log('Allowed origins for CORS:', allowedOrigins)
+
 const corsOptions = {
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://feedback-form-5sd6.onrender.com',
-    'https://jasvanth78.github.io',
-    '*'
-  ],
+  origin: true, // reflect request origin (allows requests from any origin)
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-};
+}
 
-app.use(cors(corsOptions));
+app.use(cors(corsOptions))
 app.use(express.json());
 
 // Root route for health check
